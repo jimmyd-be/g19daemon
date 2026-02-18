@@ -190,6 +190,8 @@ void G19daemon::Show() {
 
 void G19daemon::saveSettings() {
 
+    //TODO #31 Save typing command
+
     qDebug() << "Save Settings";
 
     settings->setValue(ui->actionDisable_plugin_profile->objectName(), ui->actionDisable_plugin_profile->isChecked());
@@ -250,6 +252,8 @@ void G19daemon::gKeys() {
         QString gKey = translateKey((G19Keys) keys);
 
         if (!gKey.isEmpty()) {
+
+            //TODO #31 add support for qKeyboard or QWaylandKeyboard
             QString command =
                     settings->value(translateKey(device->getActiveMKey()) + "_" + gKey)
                             .toString();
