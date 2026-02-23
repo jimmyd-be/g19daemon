@@ -27,6 +27,7 @@
 #include <QErrorMessage>
 #include <QFile>
 #include <QFont>
+#include <qkeysequenceedit.h>
 #include <QLinearGradient>
 #include <QMainWindow>
 #include <QMenu>
@@ -161,16 +162,33 @@ void G19daemon::loadSettings() {
         }
     }
 
-    for (QComboBox *button: {ui->m1DefaultPlugin, ui->m2DefaultPlugin, ui->m3DefaultPlugin, ui->mrDefaultPlugin}) {
-        button->addItem("");
-        for (PluginInterface *plugin: plugins) {
-            button->addItem(plugin->getName());
+    for (QKeySequenceEdit * edit: ui->centralWidget->findChildren<QKeySequenceEdit * >()) {
+        QString value = settings->value(edit->objectName()).toString();
+        if (!value.isEmpty()) {
+            edit->setKeySequence(QKeySequence::fromString(value));
         }
+    }
 
-        QString defaultPlugin = settings->value(button->objectName()).toString();
+    for (QComboBox *button: ui->centralWidget->findChildren<QComboBox * >()) {
 
-        if (!defaultPlugin.isEmpty()) {
-            button->setCurrentText(defaultPlugin);
+        if (button->objectName().endsWith("type")) {
+            QString type = settings->value(button->objectName()).toString();
+
+            if (!type.isEmpty()) {
+                button->setCurrentText(type);
+            }
+
+        } else {
+            button->addItem("");
+            for (PluginInterface *plugin: plugins) {
+                button->addItem(plugin->getName());
+            }
+
+            QString defaultPlugin = settings->value(button->objectName()).toString();
+
+            if (!defaultPlugin.isEmpty()) {
+                button->setCurrentText(defaultPlugin);
+            }
         }
 
     }
@@ -190,8 +208,6 @@ void G19daemon::Show() {
 
 void G19daemon::saveSettings() {
 
-    //TODO #31 Save typing command
-
     qDebug() << "Save Settings";
 
     settings->setValue(ui->actionDisable_plugin_profile->objectName(), ui->actionDisable_plugin_profile->isChecked());
@@ -206,12 +222,16 @@ void G19daemon::saveSettings() {
         settings->setValue(button->objectName(), button->palette().color(QPalette::Button));
     }
 
-    for (QComboBox *button: {ui->m1DefaultPlugin, ui->m2DefaultPlugin, ui->m3DefaultPlugin, ui->mrDefaultPlugin}) {
+    for (QComboBox *button: ui->centralWidget->findChildren<QComboBox * >()) {
         settings->setValue(button->objectName(), button->currentText());
     }
 
-    for (QSpinBox *button: {ui->m1Brightness, ui->m2Brightness, ui->m3Brightness, ui->mrBrightness}) {
-        settings->setValue(button->objectName(), button->value());
+    for (QComboBox *button: ui->centralWidget->findChildren<QComboBox * >()) {
+        settings->setValue(button->objectName(), button->currentText());
+    }
+
+    for (QKeySequenceEdit * keySequenceEdit: ui->centralWidget->findChildren<QKeySequenceEdit * >()) {
+        settings->setValue(keySequenceEdit->objectName(), keySequenceEdit->keySequence().toString());
     }
 
     unsavedSettings = false;
@@ -253,12 +273,21 @@ void G19daemon::gKeys() {
 
         if (!gKey.isEmpty()) {
 
-            //TODO #31 add support for qKeyboard or QWaylandKeyboard
-            QString command =
-                    settings->value(translateKey(device->getActiveMKey()) + "_" + gKey)
+            QString type = settings->value(translateKey(device->getActiveMKey()) + "_" + gKey + "_type")
                             .toString();
-            qDebug() << translateKey(device->getActiveMKey()) << ":" << gKey << " Pressed, Run command: " << command;
-            QProcess::startDetached(command);
+
+            if (type == "KeyStroke") {
+                QString keyStroke =  settings->value(translateKey(device->getActiveMKey()) + "_" + gKey + "_keys")
+                                .toString();
+
+            qDebug() << translateKey(device->getActiveMKey()) << ":" << gKey << "_keys Pressed, Run command: " << keyStroke;
+            } else {
+                QString command =
+                        settings->value(translateKey(device->getActiveMKey()) + "_" + gKey)
+                                .toString();
+                qDebug() << translateKey(device->getActiveMKey()) << ":" << gKey << " Pressed, Run command: " << command;
+                QProcess::startDetached(command);
+            }
         }
     }
 }
